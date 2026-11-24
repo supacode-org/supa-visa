@@ -29,7 +29,7 @@ const USAGE = `Usage:
   supa-visa                               start the service (configured through environment variables)
   supa-visa reset-passkeys [--revoke-all] remove every passkey and return to setup mode;
                                           --revoke-all also revokes every visa
-  supa-visa unblock <ip> | --all          lift the block on an address (an IPv6 /64), or every block
+  supa-visa unblock <ip> | --all          lift the block on an address's /24 or /48, or every block
   supa-visa --version                     print the version`;
 
 export async function run(args: readonly string[], env: Env): Promise<number> {
@@ -48,7 +48,7 @@ export async function run(args: readonly string[], env: Env): Promise<number> {
 
 async function unblock(env: Env, target: string): Promise<number> {
   if (target !== "all" && canonicalTarget(target) === undefined) {
-    console.error("Give an IP address, an IPv6 /64, or --all.");
+    console.error("Give an IP address, an IPv4 /24, an IPv6 /48, or --all.");
     return 2;
   }
   const reply = await askService(env, { command: "unblock", target });

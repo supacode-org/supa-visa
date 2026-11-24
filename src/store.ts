@@ -190,7 +190,7 @@ function decodeBlock(item: unknown, at: string): Block {
   const { source, since, until, failures, ...rest } = item;
   if (Object.keys(rest).length > 0) throw new StoreError(`${at} has unknown fields`);
   if (typeof source !== "string" || !isValidBlockSource(source)) {
-    throw new StoreError(`${at}.source must be a canonical IPv4 address or IPv6 /64`);
+    throw new StoreError(`${at}.source must be a canonical IPv4 /24 or IPv6 /48`);
   }
   const time = (value: unknown, field: string): number => {
     const parsed = typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) ? Date.parse(value) : Number.NaN;

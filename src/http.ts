@@ -107,7 +107,7 @@ export function createHandler(options: AppOptions): (request: IncomingMessage, r
         record.result = "auth_failed";
         record.reason = error.reason;
         if (error.counted) {
-          options.blocklist.fail(sourceOf(clientIp(options, request)), error.reason).catch((failure: unknown) => {
+          options.blocklist.fail(networkBucketOf(clientIp(options, request)), error.reason).catch((failure: unknown) => {
             options.logger.error("ip.block_failed", { error: errorMessage(failure) });
           });
         }
@@ -197,7 +197,7 @@ async function handle(
   if (path.startsWith("/setup/") && authenticator.setupState() === "inactive") throw notFound();
   const ip = clientIp(options, request);
   const source = sourceOf(ip);
-  const blockedUntil = options.blocklist.blockedUntil(source);
+  const blockedUntil = options.blocklist.blockedUntil(networkBucketOf(ip));
   if (blockedUntil !== undefined) throw new HttpError(403, { error: "blocked", until: iso(blockedUntil) });
   if (!options.limiter.take(networkBucketOf(ip))) throw new HttpError(429, { error: "rate_limited" });
   const body = await readJson(request, options.origin);
@@ -297,7 +297,7 @@ function me(options: AppOptions, request: IncomingMessage): Record<string, unkno
   // Only visas that cover the requester; everything else needs a passkey.
   const covering = ip === undefined ? [] : options.service.current.filter((candidate) => candidate.expiresAt > now && targetContains(candidate.target, ip));
   const visa = covering.sort((a, b) => b.expiresAt - a.expiresAt)[0];
-  const blockedUntil = options.blocklist.blockedUntil(sourceOf(ip));
+  const blockedUntil = options.blocklist.blockedUntil(networkBucketOf(ip));
   return {
     ip: ip ?? null,
     visa: visa === undefined ? null : { issuedAt: iso(visa.issuedAt), expiresAt: iso(visa.expiresAt), target: visa.target },

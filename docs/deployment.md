@@ -135,10 +135,11 @@ new code in the log. Anyone who can run this already controls the server.
 
 ## Blocked addresses
 
-An address with more than three failed sign-ins within a day (a wrong setup code, or a passkey response that does
-not verify) is blocked for seven days: every POST from it is refused and the page says until when. An IPv6 address
-counts as its /64. A lost or expired challenge does not count, so others cannot get you blocked by interfering
-with your sign-in, but anyone sharing your public IP can. Each block sends a notification.
+More than three failed sign-ins within a day (a wrong setup code, or a passkey response that does not verify)
+from one network block that network for seven days: every POST from it is refused and the page says until when.
+A network is an IPv4 /24 or an IPv6 /48, so moving to another address nearby does not help. A lost or expired
+challenge does not count, so others cannot get you blocked by interfering with your sign-in, but anyone on the
+same /24 or /48 can, including everyone behind the same carrier NAT. Each block sends a notification.
 
 To lift a block early, run on the server:
 

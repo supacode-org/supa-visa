@@ -350,7 +350,7 @@ test("limits requests per network: an IPv4 /24 or an IPv6 /48", async (t) => {
   assert.equal((await call("GET", "/api/me", { ip: "203.0.113.1" })).status, 200, "reading is not limited");
 });
 
-test("a neighbour in the same /24 shares the rate limit but cannot get the owner blocked", async (t) => {
+test("a neighbour's failed sign-ins block the whole /24, owner included; other networks are not affected", async (t) => {
   const { call, completeSetup, key } = await start(t);
   await completeSetup();
   const neighbour = "198.51.100.77";
@@ -362,10 +362,14 @@ test("a neighbour in the same /24 shares the rate limit but cannot get the owner
   assert.notEqual((await call("GET", "/api/me", { ip: neighbour })).body.blocked, undefined);
 
   const owner = "198.51.100.78";
-  assert.equal((await call("GET", "/api/me", { ip: owner })).body.blocked, undefined);
-  const challenge = await call("POST", "/api/challenge", { body: { action: { kind: "list" } }, ip: owner });
+  assert.notEqual((await call("GET", "/api/me", { ip: owner })).body.blocked, undefined);
+  assert.equal((await call("POST", "/api/challenge", { body: { action: { kind: "list" } }, ip: owner })).status, 403);
+
+  const elsewhere = "203.0.113.78";
+  assert.equal((await call("GET", "/api/me", { ip: elsewhere })).body.blocked, undefined);
+  const challenge = await call("POST", "/api/challenge", { body: { action: { kind: "list" } }, ip: elsewhere });
   assert.equal(challenge.status, 200);
-  const answer = await call("POST", "/api/actions", { body: { challengeId: challenge.body.challengeId, credential: key.authenticate(challenge.body.options) }, ip: owner });
+  const answer = await call("POST", "/api/actions", { body: { challengeId: challenge.body.challengeId, credential: key.authenticate(challenge.body.options) }, ip: elsewhere });
   assert.equal(answer.status, 200);
 });
 
@@ -634,7 +638,7 @@ test("a source with more than three failed sign-ins is blocked from every POST (
   const me = await call("GET", "/api/me", { ip: attacker });
   assert.deepEqual([me.status, me.body.blocked?.until], [200, blocked.body.until]);
   assert.equal((await call("GET", "/", { ip: attacker })).status, 200);
-  assert.deepEqual(notifications.filter((notification) => notification.type === "block"), [{ type: "block", source: attacker, days: 7, failures: 4 }]);
+  assert.deepEqual(notifications.filter((notification) => notification.type === "block"), [{ type: "block", source: "198.51.100.0/24", days: 7, failures: 4 }]);
 
   assert.equal((await call("POST", "/setup/begin", { body: { code: "AAAA-AAAA" } })).status, 401, "other sources are not affected");
 });

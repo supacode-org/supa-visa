@@ -222,16 +222,17 @@ test("refuses tampered passkeys", () => {
 });
 
 test("blocks round-trip and tampered ones are refused", () => {
-  const block = { source: "2001:db8:1:2::/64", since: Date.parse("2026-11-22T10:00:00.000Z"), until: Date.parse("2026-11-29T10:00:00.000Z"), failures: 4 };
-  const state: State = { ...EMPTY_STATE, blocks: [block, { ...block, source: "203.0.113.7" }] };
+  const block = { source: "2001:db8:1::/48", since: Date.parse("2026-11-22T10:00:00.000Z"), until: Date.parse("2026-11-29T10:00:00.000Z"), failures: 4 };
+  const state: State = { ...EMPTY_STATE, blocks: [block, { ...block, source: "203.0.113.0/24" }] };
   assert.deepEqual(decodeDataFile(encodeDataFile(state)).state, state);
   const good = JSON.parse(encodeDataFile(state)).blocks[0];
   const cases: [unknown, RegExp][] = [
-    [{ ...good, source: "2001:db8:1:2::1/64" }, /source/],
-    [{ ...good, source: "2001:db8:1:2::1" }, /source/],
-    [{ ...good, source: "203.0.113.0/24" }, /source/],
+    [{ ...good, source: "2001:db8:1:2::/64" }, /source/],
+    [{ ...good, source: "2001:db8:1::1/48" }, /source/],
+    [{ ...good, source: "203.0.113.7" }, /source/],
+    [{ ...good, source: "203.0.113.0/16" }, /source/],
     [{ ...good, source: "203.0.113.7 or true" }, /source/],
-    [{ ...good, source: "2001:DB8:1:2::/64" }, /source/],
+    [{ ...good, source: "2001:DB8:1::/48" }, /source/],
     [{ ...good, until: good.since }, /until must be after since/],
     [{ ...good, since: "yesterday" }, /since/],
     [{ ...good, failures: 0 }, /failures/],

@@ -201,10 +201,11 @@ test("reset-passkeys asks the running service, and says so when it is not runnin
   assert.deepEqual([unblocked.code, unblocked.stdout.trim()], [0, "Nothing was blocked."]);
   assert.equal((await runCli(["unblock", "203.0.113.7"], { DATA_FILE: dataFile })).code, 0);
   const bad = await runCli(["unblock", "not-an-ip"], { DATA_FILE: dataFile });
-  assert.deepEqual([bad.code, bad.stderr.trim()], [2, "Give an IP address, an IPv6 /64, or --all."]);
-  const wide = await runCli(["unblock", "203.0.113.0/24"], { DATA_FILE: dataFile });
+  assert.deepEqual([bad.code, bad.stderr.trim()], [2, "Give an IP address, an IPv4 /24, an IPv6 /48, or --all."]);
+  assert.equal((await runCli(["unblock", "203.0.113.0/24"], { DATA_FILE: dataFile })).code, 0);
+  const wide = await runCli(["unblock", "203.0.113.0/25"], { DATA_FILE: dataFile });
   assert.equal(wide.code, 1);
-  assert.match(wide.stderr, /single IP address or an IPv6 \/64/);
+  assert.match(wide.stderr, /an IPv4 \/24 or an IPv6 \/48/);
   assert.equal((await runCli(["unblock"], { DATA_FILE: dataFile })).code, 2);
 
   child.kill("SIGTERM");

@@ -6,11 +6,12 @@ import { DAY } from "./duration.ts";
 import { canonicalTarget, networkOf } from "./ip.ts";
 import type { Logger } from "./log.ts";
 import type { Notify } from "./notify.ts";
-import { sourceOf } from "./ratelimit.ts";
+import { networkBucketOf } from "./ratelimit.ts";
 import type { StateKeeper } from "./state.ts";
 
 export interface Block {
-  // A single IPv4 address or an IPv6 /64, the same unit as the rate limit.
+  // An IPv4 /24 or an IPv6 /48, the same unit as the rate limit: walking one's
+  // own /64, or renting neighbouring IPv4 addresses, must not start afresh.
   readonly source: string;
   readonly since: number;
   readonly until: number;
@@ -25,12 +26,13 @@ export const BLOCK_FOR = 7 * DAY;
 export const MAX_BLOCKS = 10_000;
 const MAX_COUNTED_SOURCES = 10_000;
 
-// What a stored or typed source must look like: exactly what `sourceOf` makes
-// from a client IP, so a tampered data file cannot widen a block or slip in text.
+// What a stored or typed source must look like: exactly what `networkBucketOf`
+// makes from a client IP, so a tampered data file cannot widen a block or slip in text.
 export function isValidBlockSource(source: string): boolean {
   if (canonicalTarget(source) !== source) return false;
-  if (!source.includes(":")) return !source.includes("/");
-  return source.endsWith("/64") && networkOf(source.slice(0, -3), 64) === source;
+  const [address = "", prefix] = source.split("/");
+  const expected = address.includes(":") ? "48" : "24";
+  return prefix === expected && networkOf(address, Number(expected)) === source;
 }
 
 export interface BlocklistOptions {
@@ -95,15 +97,15 @@ export class Blocklist {
     notify?.({ type: "block", source, days: BLOCK_FOR / DAY, failures: block.failures });
   }
 
-  // Lifts the block covering `target` (an IP or the /64 itself), or every block.
+  // Lifts the block covering `target` (an IP, or the /24 or /48 itself), or every block.
   async unblock(target: "all" | string): Promise<number> {
     const { keeper, logger, clock } = this.options;
     const now = clock();
     let source: string | undefined;
     if (target !== "all") {
       const canonical = canonicalTarget(target);
-      source = canonical === undefined ? undefined : canonical.includes("/") ? canonical : sourceOf(canonical);
-      if (source === undefined || !isValidBlockSource(source)) throw new Error("give a single IP address or an IPv6 /64");
+      source = canonical === undefined ? undefined : canonical.includes("/") ? canonical : networkBucketOf(canonical);
+      if (source === undefined || !isValidBlockSource(source)) throw new Error("give an IP address, an IPv4 /24 or an IPv6 /48");
     }
     const removed = await keeper.exclusive(async () => {
       const live = keeper.state.blocks.filter((block) => block.until > now);
