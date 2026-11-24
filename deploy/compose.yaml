@@ -1,0 +1,46 @@
+# Supa Visa next to cloudflared. See docs/deployment.md.
+#
+#   1. Put Supa Visa's settings in supa-visa.env next to this file (see .env.example).
+#   2. Put TUNNEL_TOKEN=<your tunnel token> in tunnel.env.
+#   3. docker compose up -d, then read the setup code: docker compose logs supa-visa
+#
+# Two files so that each container only sees its own secrets.
+
+# Docker keeps container output without limit by default; anyone can make Supa
+# Visa log, so cap it. Supa Visa keeps its own audit log in the data volume.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    env_file: tunnel.env
+    restart: unless-stopped
+    networks: [tunnel]
+    logging: *logging
+
+  supa-visa:
+    # Pin a version (for example :0.1.0) instead of latest, and upgrade on purpose.
+    image: ghcr.io/supacode-org/supa-visa:latest
+    env_file: supa-visa.env
+    volumes:
+      - supa-visa-data:/data
+    # No published ports: only cloudflared, on the same network, can reach it.
+    # Supa Visa trusts the CF-Connecting-IP header, so never publish 8787.
+    # In the tunnel, point Supa Visa's hostname at http://supa-visa:8787.
+    networks: [tunnel]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    logging: *logging
+
+networks:
+  tunnel: {}
+
+volumes:
+  supa-visa-data: {}

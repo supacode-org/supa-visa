@@ -1,0 +1,27 @@
+# Local-only notes, not for the public repo (see .private/README.md)
+.private/
+tmp/
+
+# Agent rules and specs stay local
+AGENTS.md
+CLAUDE.md
+spec/
+
+# Runtime data: visas and passkey public keys
+data/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Node
+node_modules/
+*.tsbuildinfo
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/

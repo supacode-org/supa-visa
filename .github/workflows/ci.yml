@@ -1,0 +1,39 @@
+# Copyright 2026 Kong Weirui
+# SPDX-License-Identifier: MIT
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Type check and tests
+        run: scripts/test.sh
+
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build the image
+        run: docker build --tag supa-visa:ci .
+
+      - name: The image starts and reports its version
+        run: test "$(docker run --rm supa-visa:ci --version)" = "$(node -p 'require("./package.json").version')"
