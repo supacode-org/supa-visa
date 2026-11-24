@@ -136,11 +136,14 @@ test("starts, syncs with Cloudflare, and stops cleanly on SIGTERM", async (t) =>
   const code = await new Promise<number | null>((resolve) => child.on("close", resolve));
   assert.equal(code, 0);
   const entries = logLines(stdout);
-  assert.deepEqual(
-    entries.map((entry) => entry.event),
-    ["service.start", "setup.code", "http.listen", "sync.complete", "rules.complete", "service.stop"],
-  );
-  assert.deepEqual(entries[3], { ...entries[3], reason: "startup", added: 0, removed: 1 });
+  const events = entries.map((entry) => entry.event);
+  // Listening and the first sync run side by side, so only their own order is fixed.
+  assert.deepEqual(events.slice(0, 2), ["service.start", "setup.code"]);
+  assert.equal(events.at(-1), "service.stop");
+  assert.deepEqual([...events.slice(2, -1)].sort(), ["http.listen", "rules.complete", "sync.complete"]);
+  assert.ok(events.indexOf("sync.complete") < events.indexOf("rules.complete"));
+  const sync = entries.find((entry) => entry.event === "sync.complete");
+  assert.deepEqual(sync, { ...sync, reason: "startup", added: 0, removed: 1 });
   assert.ok(cloudflare.requests.every((request) => request.endsWith("Bearer token")));
   assert.ok(!stdout.includes("Bearer"), "the token never reaches the logs");
 });
