@@ -136,11 +136,11 @@ async function start(t: TestContext, limits = { burst: 10_000, refillEvery: 1 })
     });
   }
 
-  return { call, act, completeSetup, key, store, sync, entries, service, zoneLookups: () => zoneLookups, ipinfoCalls, blocklist, notifications };
+  return { base, call, act, completeSetup, key, store, sync, entries, service, zoneLookups: () => zoneLookups, ipinfoCalls, blocklist, notifications };
 }
 
 test("serves the page and its files with strict headers, and nothing else", async (t) => {
-  const { call } = await start(t);
+  const { base, call } = await start(t);
   const page = await call("GET", "/");
   assert.equal(page.status, 200);
   assert.match(page.headers.get("content-type") ?? "", /text\/html/);
@@ -155,6 +155,17 @@ test("serves the page and its files with strict headers, and nothing else", asyn
   assert.equal(page.headers.get("referrer-policy"), "no-referrer");
   assert.equal(page.headers.get("cache-control"), "no-store");
   for (const path of ["/app.js", "/app.css", "/vendor/webauthn.js"]) assert.equal((await call("GET", path)).status, 200, path);
+  assert.match(page.body, /<link rel="icon" type="image\/png" href="\/icon\.png" \/>/);
+  assert.match(page.body, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png" \/>/);
+  for (const path of ["/icon.png", "/apple-touch-icon.png"]) {
+    const response = await fetch(`${base}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get("content-type"), "image/png", path);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff", path);
+    const signature = Buffer.from(await response.arrayBuffer()).subarray(0, 8);
+    assert.deepEqual(signature, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), path);
+  }
+  assert.equal((await call("GET", "/favicon.ico")).status, 404);
   for (const path of ["/index.html", "/../package.json", "/public/app.js", "/%2e%2e/package.json", "/node_modules/x", "/api/nope"]) {
     assert.equal((await call("GET", path)).status, 404, path);
   }

@@ -35,6 +35,9 @@ const ASSETS: Record<string, { file: URL; contentType: string }> = {
   "/": { file: new URL("../public/index.html", import.meta.url), contentType: "text/html; charset=utf-8" },
   "/app.js": { file: new URL("../public/app.js", import.meta.url), contentType: "text/javascript; charset=utf-8" },
   "/app.css": { file: new URL("../public/app.css", import.meta.url), contentType: "text/css; charset=utf-8" },
+  "/icon.png": { file: new URL("../public/icon.png", import.meta.url), contentType: "image/png" },
+  // iOS asks for this path even when the page has no <link> for it.
+  "/apple-touch-icon.png": { file: new URL("../public/apple-touch-icon.png", import.meta.url), contentType: "image/png" },
   "/vendor/webauthn.js": {
     file: new URL("../node_modules/@simplewebauthn/browser/dist/bundle/index.umd.min.js", import.meta.url),
     contentType: "text/javascript; charset=utf-8",
